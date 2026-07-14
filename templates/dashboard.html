@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Reyukai Members{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>Dashboard</h1>
+    <div class="stat-grid">
+        <div class="stat-box">
+            <div class="num">{{ total_members }}</div>
+            <div class="label">Total members</div>
+        </div>
+        <div class="stat-box">
+            <div class="num">{{ total_receipts }}</div>
+            <div class="label">Total receipts</div>
+        </div>
+        <div class="stat-box">
+            <div class="num">{{ shibicho_counts|length }}</div>
+            <div class="label">Shibichos</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Members by Shibicho</h2>
+    <table>
+        <thead>
+            <tr><th>Shibicho</th><th>Members</th><th></th></tr>
+        </thead>
+        <tbody>
+            {% for shibicho, count in shibicho_counts %}
+            <tr>
+                <td>{{ shibicho }}</td>
+                <td>{{ count }}</td>
+                <td>
+                    <a href="{{ url_for('members_list', shibicho=shibicho) }}" class="btn-secondary btn">View</a>
+                    <a href="{{ url_for('members_print', shibicho=shibicho) }}" class="btn-secondary btn">Print</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3">No members yet. <a href="{{ url_for('member_add') }}">Add the first one</a>.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

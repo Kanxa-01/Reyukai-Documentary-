@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Print Receipts — {{ shibicho }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; color: #1f2937; margin: 30px; }
+        h1 { font-size: 1.3rem; margin-bottom: 2px; }
+        .meta { color: #6b7280; font-size: 0.85rem; margin-bottom: 18px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ccc; padding: 6px 8px; font-size: 0.85rem; text-align: left; }
+        th { background: #f0f4f8; }
+        .no-print { margin-bottom: 20px; }
+        .no-print select, .no-print button, .no-print a {
+            padding: 8px 12px; font-size: 0.9rem; border-radius: 6px; margin-right: 8px;
+        }
+        @media print {
+            .no-print { display: none; }
+            body { margin: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <form method="GET" style="display:inline;">
+            <select name="shibicho" onchange="this.form.submit()">
+                <option value="">All Shibichos</option>
+                {% for s in all_shibichos %}
+                <option value="{{ s }}" {% if s == shibicho %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        <button onclick="window.print()">Print / Save as PDF</button>
+        <a href="{{ url_for('receipts_list') }}">Back to list</a>
+    </div>
+
+    <h1>Reyukai Receipts — {{ shibicho }}</h1>
+    <div class="meta">Printed on {{ printed_on }} · {{ receipts|length }} receipt(s)</div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Receipt No.</th><th>Member S.N</th><th>Full Name</th><th>Shibicho</th><th>Entrance</th><th>Renewal</th><th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in receipts %}
+            <tr>
+                <td>{{ r.receipt_no }}</td>
+                <td>{{ r.member_id }}</td>
+                <td>{{ r.full_name_snapshot }}</td>
+                <td>{{ r.shibicho_snapshot }}</td>
+                <td>{{ r.entrance_date_snapshot.strftime('%Y-%m-%d') if r.entrance_date_snapshot else '' }}</td>
+                <td>{{ r.renewal_date.strftime('%Y-%m-%d') if r.renewal_date else '' }}</td>
+                <td>{{ r.status }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Login — Reyukai Members{% endblock %}
+{% block content %}
+<div style="max-width: 380px; margin: 60px auto;">
+    <div class="card">
+        <h1>Reyukai Member Login</h1>
+        <form method="POST">
+            <label>Username</label>
+            <input type="text" name="username" required autofocus>
+            <label>Password</label>
+            <input type="password" name="password" required>
+            <button type="submit" class="btn" style="margin-top: 20px; width: 100%;">Log in</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

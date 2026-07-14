@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if receipt else 'Add' }} Receipt — Reyukai{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 560px;">
+    <h1>{{ 'Edit Receipt' if receipt else 'Add Receipt' }}</h1>
+    <form method="POST">
+        <label>Receipt No. *</label>
+        <input type="text" name="receipt_no" required value="{{ receipt.receipt_no if receipt else '' }}">
+
+        {% if not receipt %}
+        <label>Member — search by name *</label>
+        <div class="autocomplete-wrap">
+            <input type="text" id="member-search" placeholder="Type a member's name..." autocomplete="off" required>
+            <div class="autocomplete-results" id="member-results"></div>
+        </div>
+        <div class="selected-oya" id="selected-member">
+            Selected: <span id="selected-member-label"></span>
+            <button type="button" onclick="clearMember()">Clear</button>
+        </div>
+        <input type="hidden" name="member_id" id="member_id" required>
+        {% else %}
+        <label>Member</label>
+        <input type="text" disabled value="{{ receipt.full_name_snapshot }} (S.N. {{ receipt.member_id }})">
+        {% endif %}
+
+        <label>Renewal Date</label>
+        <input type="date" name="renewal_date" value="{{ receipt.renewal_date.strftime('%Y-%m-%d') if receipt and receipt.renewal_date else '' }}">
+
+        <label>Status</label>
+        <select name="status">
+            {% for s in ['Active', 'Expired', 'Suspended'] %}
+            <option value="{{ s }}" {% if receipt and receipt.status == s %}selected{% elif not receipt and s == 'Active' %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+        </select>
+
+        <div style="margin-top: 22px; display:flex; gap:10px;">
+            <button type="submit" class="btn">{{ 'Save Changes' if receipt else 'Add Receipt' }}</button>
+            <a href="{{ url_for('receipts_list') }}" class="btn-secondary btn">Cancel</a>
+        </div>
+    </form>
+</div>
+
+{% if not receipt %}
+<script>
+const memberSearch = document.getElementById('member-search');
+const memberResults = document.getElementById('member-results');
+const memberIdField = document.getElementById('member_id');
+const selectedMemberBox = document.getElementById('selected-member');
+const selectedMemberLabel = document.getElementById('selected-member-label');
+let debounceTimer;
+
+memberSearch.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    const q = memberSearch.value.trim();
+    if (q.length < 2) { memberResults.style.display = 'none'; return; }
+    debounceTimer = setTimeout(() => {
+        fetch(`/api/members/search?q=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(data => {
+                memberResults.innerHTML = '';
+                if (data.length === 0) { memberResults.style.display = 'none'; return; }
+                data.forEach(m => {
+                    const div = document.createElement('div');
+                    div.innerHTML = `${m.full_name} <span class="ac-shibicho">— ${m.shibicho} (S.N. ${m.id})</span>`;
+                    div.onclick = () => {
+                        memberIdField.value = m.id;
+                        selectedMemberLabel.textContent = `${m.full_name} (S.N. ${m.id})`;
+                        selectedMemberBox.style.display = 'flex';
+                        memberResults.style.display = 'none';
+                        memberSearch.value = '';
+                    };
+                    memberResults.appendChild(div);
+                });
+                memberResults.style.display = 'block';
+            });
+    }, 250);
+});
+
+function clearMember() {
+    memberIdField.value = '';
+    selectedMemberBox.style.display = 'none';
+}
+
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.autocomplete-wrap')) memberResults.style.display = 'none';
+});
+</script>
+{% endif %}
+{% endblock %}

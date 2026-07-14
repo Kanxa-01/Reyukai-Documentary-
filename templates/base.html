@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Reyukai Members{% endblock %}</title>
+    <style>
+        :root {
+            --primary: #1a4d7a;
+            --primary-dark: #123a5c;
+            --bg: #f5f7fa;
+            --border: #dde3ea;
+            --text: #1f2937;
+            --muted: #6b7280;
+            --success-bg: #e6f4ea;
+            --success-text: #1e7e34;
+            --error-bg: #fdecea;
+            --error-text: #b3261e;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+        }
+        nav {
+            background: var(--primary);
+            color: white;
+            padding: 14px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        nav .brand { font-weight: 600; font-size: 1.1rem; }
+        nav a { color: white; text-decoration: none; margin-left: 18px; font-size: 0.95rem; opacity: 0.9; }
+        nav a:hover { opacity: 1; text-decoration: underline; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+        .card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        h1 { font-size: 1.4rem; margin-top: 0; }
+        h2 { font-size: 1.1rem; color: var(--muted); font-weight: 500; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 0.92rem; }
+        th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.03em; }
+        tr:hover td { background: #fafbfc; }
+        .btn {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 9px 16px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .btn:hover { background: var(--primary-dark); }
+        .btn-secondary { background: white; color: var(--primary); border: 1px solid var(--primary); }
+        .btn-secondary:hover { background: #eef4f9; }
+        .btn-danger { background: white; color: var(--error-text); border: 1px solid var(--error-text); }
+        .btn-danger:hover { background: var(--error-bg); }
+        input, select, textarea {
+            width: 100%;
+            padding: 9px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-family: inherit;
+        }
+        label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; margin-top: 14px; }
+        .flash { padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; font-size: 0.9rem; }
+        .flash.success { background: var(--success-bg); color: var(--success-text); }
+        .flash.error { background: var(--error-bg); color: var(--error-text); }
+        .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
+        .stat-box { background: #eef4f9; border-radius: 8px; padding: 16px; }
+        .stat-box .num { font-size: 1.6rem; font-weight: 700; color: var(--primary); }
+        .stat-box .label { font-size: 0.8rem; color: var(--muted); }
+        .badge { padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; }
+        .badge.active { background: var(--success-bg); color: var(--success-text); }
+        .badge.inactive { background: #f0f0f0; color: var(--muted); }
+        .pagination { display: flex; gap: 8px; margin-top: 16px; }
+        .autocomplete-wrap { position: relative; }
+        .autocomplete-results {
+            position: absolute; top: 100%; left: 0; right: 0;
+            background: white; border: 1px solid var(--border); border-radius: 6px;
+            max-height: 220px; overflow-y: auto; z-index: 10; display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .autocomplete-results div {
+            padding: 8px 10px; cursor: pointer; font-size: 0.88rem; border-bottom: 1px solid var(--border);
+        }
+        .autocomplete-results div:hover { background: #eef4f9; }
+        .autocomplete-results .ac-shibicho { color: var(--muted); font-size: 0.78rem; }
+        .selected-oya {
+            margin-top: 6px; font-size: 0.85rem; color: var(--primary);
+            display: none; align-items: center; gap: 8px;
+        }
+        .selected-oya button {
+            background: none; border: none; color: var(--error-text); cursor: pointer; font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    {% if session.get('user_id') %}
+    <nav>
+        <span class="brand">Reyukai Members</span>
+        <div>
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('members_list') }}">Members</a>
+            <a href="{{ url_for('member_add') }}">Add Member</a>
+            <a href="{{ url_for('members_print') }}">Print Members</a>
+            <a href="{{ url_for('receipts_list') }}">Receipts</a>
+            <a href="{{ url_for('receipt_add') }}">Add Receipt</a>
+            <a href="{{ url_for('logout') }}">Logout ({{ session.get('display_name') }})</a>
+        </div>
+    </nav>
+    {% endif %}
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

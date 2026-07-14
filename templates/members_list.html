@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Members — Reyukai{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>Members</h1>
+    <form method="GET" class="toolbar">
+        <input type="text" name="q" placeholder="Search by name..." value="{{ search }}" style="max-width: 220px;">
+        <select name="shibicho" onchange="this.form.submit()" style="max-width: 200px;">
+            <option value="">All Shibichos</option>
+            {% for s in all_shibichos %}
+            <option value="{{ s }}" {% if s == current_shibicho %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+        </select>
+        <select name="status" onchange="this.form.submit()" style="max-width: 160px;">
+            <option value="">All Statuses</option>
+            {% for s in status_choices %}
+            <option value="{{ s }}" {% if s == current_status %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn">Filter</button>
+        <a href="{{ url_for('member_add') }}" class="btn" style="margin-left: auto;">+ Add Member</a>
+    </form>
+
+    <table>
+        <thead>
+            <tr>
+                <th>S.N</th><th>Name</th><th>Oya</th><th>Shibicho</th><th>Entrance</th><th>Status</th><th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in members %}
+            <tr>
+                <td>{{ m.id }}</td>
+                <td>{{ m.full_name }}</td>
+                <td>{{ m.oya_name or '—' }}</td>
+                <td>{{ m.shibicho }}</td>
+                <td>{{ m.entrance_date.strftime('%Y-%m-%d') if m.entrance_date else '—' }}</td>
+                <td><span class="badge {{ 'active' if m.status == 'Active' else 'inactive' }}">{{ m.status }}</span></td>
+                <td>
+                    <a href="{{ url_for('member_edit', member_id=m.id) }}" class="btn-secondary btn">Edit</a>
+                    <form method="POST" action="{{ url_for('member_delete', member_id=m.id) }}" style="display:inline;"
+                          onsubmit="return confirm('Delete {{ m.full_name }}?');">
+                        <button type="submit" class="btn-danger btn">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7">No members found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        {% if pagination.has_prev %}
+        <a class="btn-secondary btn" href="{{ url_for('members_list', page=pagination.prev_num, shibicho=current_shibicho, status=current_status, q=search) }}">← Prev</a>
+        {% endif %}
+        <span style="align-self:center; color:var(--muted); font-size:0.85rem;">Page {{ pagination.page }} of {{ pagination.pages or 1 }}</span>
+        {% if pagination.has_next %}
+        <a class="btn-secondary btn" href="{{ url_for('members_list', page=pagination.next_num, shibicho=current_shibicho, status=current_status, q=search) }}">Next →</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

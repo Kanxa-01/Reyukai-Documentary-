@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Receipts — Reyukai{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>Receipts</h1>
+    <form method="GET" class="toolbar">
+        <input type="text" name="q" placeholder="Search receipt no. or name..." value="{{ search }}" style="max-width: 240px;">
+        <select name="shibicho" onchange="this.form.submit()" style="max-width: 220px;">
+            <option value="">All Shibichos</option>
+            {% for s in all_shibichos %}
+            <option value="{{ s }}" {% if s == current_shibicho %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn">Filter</button>
+        <a href="{{ url_for('receipt_add') }}" class="btn" style="margin-left: auto;">+ Add Receipt</a>
+    </form>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Receipt No.</th><th>Member S.N</th><th>Full Name</th><th>Shibicho</th><th>Entrance</th><th>Renewal</th><th>Status</th><th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in receipts %}
+            <tr>
+                <td>{{ r.receipt_no }}</td>
+                <td>{{ r.member_id }}</td>
+                <td>{{ r.full_name_snapshot }}</td>
+                <td>{{ r.shibicho_snapshot }}</td>
+                <td>{{ r.entrance_date_snapshot.strftime('%Y-%m-%d') if r.entrance_date_snapshot else '—' }}</td>
+                <td>{{ r.renewal_date.strftime('%Y-%m-%d') if r.renewal_date else '—' }}</td>
+                <td><span class="badge {{ 'active' if r.status == 'Active' else 'inactive' }}">{{ r.status }}</span></td>
+                <td>
+                    <a href="{{ url_for('receipt_edit', receipt_id=r.id) }}" class="btn-secondary btn">Edit</a>
+                    <form method="POST" action="{{ url_for('receipt_delete', receipt_id=r.id) }}" style="display:inline;"
+                          onsubmit="return confirm('Delete receipt {{ r.receipt_no }}?');">
+                        <button type="submit" class="btn-danger btn">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8">No receipts found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        {% if pagination.has_prev %}
+        <a class="btn-secondary btn" href="{{ url_for('receipts_list', page=pagination.prev_num, shibicho=current_shibicho, q=search) }}">← Prev</a>
+        {% endif %}
+        <span style="align-self:center; color:var(--muted); font-size:0.85rem;">Page {{ pagination.page }} of {{ pagination.pages or 1 }}</span>
+        {% if pagination.has_next %}
+        <a class="btn-secondary btn" href="{{ url_for('receipts_list', page=pagination.next_num, shibicho=current_shibicho, q=search) }}">Next →</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

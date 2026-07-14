@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Print — {{ shibicho }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; color: #1f2937; margin: 30px; }
+        h1 { font-size: 1.3rem; margin-bottom: 2px; }
+        .meta { color: #6b7280; font-size: 0.85rem; margin-bottom: 18px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ccc; padding: 6px 8px; font-size: 0.82rem; text-align: left; }
+        th { background: #f0f4f8; }
+        .no-print { margin-bottom: 20px; }
+        .no-print select, .no-print button, .no-print a {
+            padding: 8px 12px; font-size: 0.9rem; border-radius: 6px; margin-right: 8px;
+        }
+        @media print {
+            .no-print { display: none; }
+            body { margin: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <form method="GET" style="display:inline;">
+            <select name="shibicho" onchange="this.form.submit()">
+                <option value="">All Shibichos</option>
+                {% for s in all_shibichos %}
+                <option value="{{ s }}" {% if s == shibicho %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        <button onclick="window.print()">Print / Save as PDF</button>
+        <a href="{{ url_for('members_list') }}">Back to list</a>
+    </div>
+
+    <h1>Reyukai Members — {{ shibicho }}</h1>
+    <div class="meta">Printed on {{ printed_on }} · {{ members|length }} member(s)</div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>S.N</th><th>Name</th><th>Address</th><th>Oya</th><th>Entrance</th><th>Shibicho</th><th>Valid Upto</th><th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in members %}
+            <tr>
+                <td>{{ m.id }}</td>
+                <td>{{ m.full_name }}</td>
+                <td>{{ m.address or '' }}</td>
+                <td>{{ m.oya_name or '' }}</td>
+                <td>{{ m.entrance_date.strftime('%Y-%m-%d') if m.entrance_date else '' }}</td>
+                <td>{{ m.shibicho }}</td>
+                <td>{{ m.valid_upto.strftime('%Y-%m-%d') if m.valid_upto else '' }}</td>
+                <td>{{ m.status }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
