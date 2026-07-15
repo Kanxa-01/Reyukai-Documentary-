@@ -383,6 +383,58 @@ def receipts_print():
 
 
 # ---------------------------------------------------------------------------
+# One-time web setup route (Render free tier has no Shell access)
+# Visit /setup/<SETUP_KEY> once to create tables + your first login.
+# Remove this route (or change SETUP_KEY) after you've used it.
+# ---------------------------------------------------------------------------
+
+SETUP_KEY = os.environ.get('SETUP_KEY', 'change-me-before-deploying')
+
+
+@app.route('/setup/<key>', methods=['GET', 'POST'])
+def one_time_setup(key):
+    if key != SETUP_KEY:
+        return 'Not found.', 404
+
+    db.create_all()  # safe to run repeatedly -- does nothing if tables already exist
+
+    message = None
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        display_name = request.form.get('display_name', '').strip()
+        password = request.form.get('password', '')
+        if User.query.filter_by(username=username).first():
+            message = f'User "{username}" already exists.'
+        elif not username or not password:
+            message = 'Username and password are required.'
+        else:
+            user = User(username=username, display_name=display_name or username,
+                        password_hash=generate_password_hash(password))
+            db.session.add(user)
+            db.session.commit()
+            message = f'User "{username}" created successfully. You can now log in.'
+
+    existing_users = [u.username for u in User.query.all()]
+    return f'''
+    <html><body style="font-family: sans-serif; max-width: 480px; margin: 60px auto;">
+    <h2>One-time Setup</h2>
+    <p>Tables created/verified. Existing users: {', '.join(existing_users) or 'none yet'}</p>
+    {f"<p style='color: green;'><b>{message}</b></p>" if message else ""}
+    <form method="POST">
+        <label>Username</label><br>
+        <input name="username" required style="width:100%; padding:8px; margin:6px 0;"><br>
+        <label>Display Name</label><br>
+        <input name="display_name" style="width:100%; padding:8px; margin:6px 0;"><br>
+        <label>Password</label><br>
+        <input name="password" type="password" required style="width:100%; padding:8px; margin:6px 0;"><br>
+        <button type="submit" style="padding:10px 16px; margin-top:10px;">Create User</button>
+    </form>
+    <p><a href="/login">Go to login</a></p>
+    </body></html>
+    '''
+
+
+# ---------------------------------------------------------------------------
 # CLI commands
 # ---------------------------------------------------------------------------
 
