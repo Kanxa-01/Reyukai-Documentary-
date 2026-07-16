@@ -68,7 +68,7 @@ class Receipt(db.Model):
     if the member record changes later."""
     __tablename__ = 'receipts'
     id = db.Column(db.Integer, primary_key=True)
-    receipt_no = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    receipt_no = db.Column(db.String(50), nullable=False, index=True)
     member_id = db.Column(db.Integer, db.ForeignKey('members.id'), nullable=False)
     member = db.relationship('Member', backref='receipts')
 
