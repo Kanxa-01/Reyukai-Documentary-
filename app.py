@@ -172,7 +172,7 @@ def members_list():
 @app.route('/api/members/search')
 @login_required
 def api_members_search():
-    """Used by the Oya No. autocomplete on the member form."""
+    """Used by the 'search by name instead' fallback on the member form."""
     q = request.args.get('q', '').strip()
     exclude_id = request.args.get('exclude_id', type=int)
     if not q:
@@ -182,6 +182,16 @@ def api_members_search():
         query = query.filter(Member.id != exclude_id)
     results = query.order_by(Member.full_name).limit(10).all()
     return jsonify([{'id': m.id, 'full_name': m.full_name, 'shibicho': m.shibicho} for m in results])
+
+
+@app.route('/api/members/<int:member_id>')
+@login_required
+def api_member_lookup(member_id):
+    """Used by the Oya No. field to look up a member directly by S.N."""
+    member = Member.query.get(member_id)
+    if not member:
+        return jsonify({'error': 'not found'}), 404
+    return jsonify({'id': member.id, 'full_name': member.full_name, 'shibicho': member.shibicho})
 
 
 @app.route('/members/add', methods=['GET', 'POST'])

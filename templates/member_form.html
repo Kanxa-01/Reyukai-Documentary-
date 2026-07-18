@@ -10,16 +10,20 @@
         <label>Address</label>
         <input type="text" name="address" value="{{ member.address if member else '' }}">
 
-        <label>Oya No. (sponsor) — search by name</label>
-        <div class="autocomplete-wrap">
+        <label>Oya No. (sponsor's S.N.)</label>
+        <input type="number" name="oya_id" id="oya_id" min="1"
+               placeholder="Enter the sponsor's S.N. number..."
+               value="{{ member.oya_id if member and member.oya_id else '' }}">
+        <div class="selected-oya" id="oya-status"></div>
+        <div style="margin-top: 4px;">
+            <a href="#" id="toggle-name-search" style="font-size: 0.82rem; color: var(--muted);">
+                Don't know the number? Search by name instead
+            </a>
+        </div>
+        <div class="autocomplete-wrap" id="name-search-wrap" style="display:none; margin-top: 8px;">
             <input type="text" id="oya-search" placeholder="Type a name to search existing members..." autocomplete="off">
             <div class="autocomplete-results" id="oya-results"></div>
         </div>
-        <div class="selected-oya" id="selected-oya">
-            Selected: <span id="selected-oya-label"></span>
-            <button type="button" onclick="clearOya()">Clear</button>
-        </div>
-        <input type="hidden" name="oya_id" id="oya_id" value="{{ member.oya_id if member and member.oya_id else '' }}">
 
         <label>Entrance Date</label>
         <input type="date" name="entrance_date" value="{{ member.entrance_date.strftime('%Y-%m-%d') if member and member.entrance_date else '' }}">
@@ -54,18 +58,60 @@
 </div>
 
 <script>
+const oyaIdField = document.getElementById('oya_id');
+const oyaStatus = document.getElementById('oya-status');
+const shibichoField = document.querySelector('input[name="shibicho"]');
+let lookupTimer;
+
+function applyOyaResult(m) {
+    oyaStatus.style.display = 'flex';
+    oyaStatus.innerHTML = `Sponsor found: <b>${m.full_name}</b> (${m.shibicho})`;
+    oyaStatus.style.color = 'var(--primary)';
+    // Auto-fill Shibicho from the sponsor -- new members usually join under
+    // the same Shibicho as whoever sponsored them. Only fills if currently
+    // blank, so it never silently overwrites something you typed on purpose.
+    if (shibichoField && !shibichoField.value.trim()) {
+        shibichoField.value = m.shibicho;
+    }
+}
+
+function lookupOyaById(id) {
+    if (!id) { oyaStatus.style.display = 'none'; return; }
+    fetch(`/api/members/${id}`)
+        .then(r => {
+            if (!r.ok) throw new Error('not found');
+            return r.json();
+        })
+        .then(m => applyOyaResult(m))
+        .catch(() => {
+            oyaStatus.style.display = 'flex';
+            oyaStatus.innerHTML = `No member found with S.N. ${id}`;
+            oyaStatus.style.color = 'var(--error-text)';
+        });
+}
+
+oyaIdField.addEventListener('input', () => {
+    clearTimeout(lookupTimer);
+    const id = oyaIdField.value.trim();
+    lookupTimer = setTimeout(() => lookupOyaById(id), 350);
+});
+
+{% if member and member.oya %}
+lookupOyaById({{ member.oya_id }});
+{% endif %}
+
+// Fallback: search by name, for when you don't know the S.N.
+const toggleLink = document.getElementById('toggle-name-search');
+const nameSearchWrap = document.getElementById('name-search-wrap');
 const oyaSearch = document.getElementById('oya-search');
 const oyaResults = document.getElementById('oya-results');
-const oyaIdField = document.getElementById('oya_id');
-const selectedOyaBox = document.getElementById('selected-oya');
-const selectedOyaLabel = document.getElementById('selected-oya-label');
 const excludeId = {{ member.id if member else 'null' }};
 let debounceTimer;
 
-{% if member and member.oya %}
-selectedOyaBox.style.display = 'flex';
-selectedOyaLabel.textContent = "{{ member.oya.full_name }} ({{ member.oya.shibicho }})";
-{% endif %}
+toggleLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    nameSearchWrap.style.display = nameSearchWrap.style.display === 'none' ? 'block' : 'none';
+});
 
 oyaSearch.addEventListener('input', () => {
     clearTimeout(debounceTimer);
@@ -84,13 +130,13 @@ oyaSearch.addEventListener('input', () => {
                 }
                 data.forEach(m => {
                     const div = document.createElement('div');
-                    div.innerHTML = `${m.full_name} <span class="ac-shibicho">— ${m.shibicho}</span>`;
+                    div.innerHTML = `${m.full_name} <span class="ac-shibicho">— S.N. ${m.id}, ${m.shibicho}</span>`;
                     div.onclick = () => {
                         oyaIdField.value = m.id;
-                        selectedOyaLabel.textContent = `${m.full_name} (${m.shibicho})`;
-                        selectedOyaBox.style.display = 'flex';
+                        applyOyaResult(m);
                         oyaResults.style.display = 'none';
                         oyaSearch.value = '';
+                        nameSearchWrap.style.display = 'none';
                     };
                     oyaResults.appendChild(div);
                 });
@@ -98,11 +144,6 @@ oyaSearch.addEventListener('input', () => {
             });
     }, 250);
 });
-
-function clearOya() {
-    oyaIdField.value = '';
-    selectedOyaBox.style.display = 'none';
-}
 
 document.addEventListener('click', (e) => {
     if (!e.target.closest('.autocomplete-wrap')) oyaResults.style.display = 'none';
