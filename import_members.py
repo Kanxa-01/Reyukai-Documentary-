@@ -49,7 +49,8 @@ except ImportError:
     pass
 
 SHEET_NAME = '3rd Principle branch Total Mem'
-BATCH_SIZE = 2000
+BATCH_SIZE = 500
+MAX_RETRIES = 5
 TODAY = date.today()
 
 # Column indices (0-based) in the master sheet
@@ -149,20 +150,56 @@ def main():
     ws = wb[SHEET_NAME]
 
     print('Connecting to database...')
-    conn = psycopg2.connect(database_url)
+    connect_kwargs = dict(
+        keepalives=1,
+        keepalives_idle=30,
+        keepalives_interval=10,
+        keepalives_count=5,
+        connect_timeout=15,
+    )
+    conn = psycopg2.connect(database_url, **connect_kwargs)
+    conn.autocommit = False
     cur = conn.cursor()
+
+    def reconnect():
+        nonlocal conn, cur
+        try:
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+        conn = psycopg2.connect(database_url, **connect_kwargs)
+        conn.autocommit = False
+        cur = conn.cursor()
+
+    def run_with_retry(fn):
+        """Retries a DB operation on connection drops, reconnecting between tries."""
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                return fn()
+            except (psycopg2.OperationalError, psycopg2.InterfaceError) as e:
+                print(f'  [connection issue, attempt {attempt}/{MAX_RETRIES}: {e}]')
+                if attempt == MAX_RETRIES:
+                    raise
+                import time
+                time.sleep(3 * attempt)
+                reconnect()
+
+    print('Checking for already-imported members (so this script can resume safely if interrupted)...')
+    cur.execute('SELECT id FROM members')
+    existing_ids = set(r[0] for r in cur.fetchall())
+    if existing_ids:
+        print(f'  Found {len(existing_ids)} members already imported -- these rows will be skipped.')
 
     members_batch = []
     receipts_batch = []
     oya_pairs = []  # (member_id, oya_id)
-    inserted_ids = set()
+    inserted_ids = set(existing_ids)
 
     stats = Counter()
     unparsed_dates = []  # (sn, column_index, raw_value)
 
-    def flush_members():
-        if not members_batch:
-            return
+    def _do_flush_members():
         execute_values(cur, """
             INSERT INTO members
                 (id, full_name, address, entrance_date, hozashu, jun_shibicho,
@@ -171,11 +208,14 @@ def main():
             ON CONFLICT (id) DO NOTHING
         """, members_batch)
         conn.commit()
+
+    def flush_members():
+        if not members_batch:
+            return
+        run_with_retry(_do_flush_members)
         members_batch.clear()
 
-    def flush_receipts():
-        if not receipts_batch:
-            return
+    def _do_flush_receipts():
         execute_values(cur, """
             INSERT INTO receipts
                 (receipt_no, member_id, full_name_snapshot, shibicho_snapshot,
@@ -183,6 +223,12 @@ def main():
             VALUES %s
         """, receipts_batch)
         conn.commit()
+
+    def flush_receipts():
+        if not receipts_batch:
+            return
+        flush_members()  # guarantee referenced members are committed first
+        run_with_retry(_do_flush_receipts)
         receipts_batch.clear()
 
     print('Reading rows...')
@@ -196,6 +242,10 @@ def main():
         except (ValueError, TypeError):
             continue
         row_num += 1
+
+        if sn in existing_ids:
+            stats['skipped_already_imported'] += 1
+            continue
 
         full_name = (row[COL_FULL_NAME] or '').strip() if row[COL_FULL_NAME] else ''
         if not full_name:
@@ -300,6 +350,7 @@ def main():
     print('IMPORT COMPLETE')
     print('=' * 60)
     print(f"Members inserted:              {stats['members_inserted']}")
+    print(f"Skipped -- already imported:   {stats['skipped_already_imported']}")
     print(f"Receipts inserted:             {stats['receipts_inserted']}")
     print(f"  (of which missing receipt#): {stats['receipts_missing_no']}")
     print(f"Skipped -- blank name:         {stats['skipped_blank_name']}")
